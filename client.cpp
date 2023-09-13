@@ -6,45 +6,26 @@
 #include <deque>
 using namespace boost::asio;
 
-const int MAX_TEXT_LENGTH = 20000;
+const int MAX_TEXT_LENGTH = 1000;
 
 
 void read_data(ip::tcp::socket& socket)
 {
-    //create buffer
+    // Create a buffer
     std::array<char, MAX_TEXT_LENGTH> read_msg;
-    std::cout << "IN 1" << std::endl;
-    
-    //verify the socket
-    if (socket.is_open()) {
 
-        std::cout << "IN 2" << std::endl;
-    }
-    else {
-        std::cerr << "Socket is not open." << std::endl;
-    }
-
-    //read and repeat
-    async_read(socket,
-        boost::asio::buffer(read_msg.data(), read_msg.size()),
-        [&](boost::system::error_code ec, std::size_t)
-        {   
-            std::cout << "IN 2.5";
-            if (!ec)
-            {
-                std::cout << "IN 3";
-                //display the message
-                std::cout.write(read_msg.data(), read_msg.size());
+    // Async read
+    socket.async_read_some(boost::asio::buffer(read_msg),
+        [&](boost::system::error_code ec, std::size_t bytes_transferred) {
+            if (!ec) {
+                // Display the received message
+                std::cout.write(read_msg.data(), bytes_transferred);
                 std::cout << "\n";
-                //clear the message
-                memset(read_msg.data(), '\0', read_msg.size());
-                
-                read_data(socket);//repeat
+                read_data(socket); // Continue reading
             }
             else {
-                std::cout << "IN 4";
+                std::cerr << "Read error: " << ec.message() << "\n";
             }
-            
         });
 }
 
@@ -73,11 +54,11 @@ void write_data(ip::tcp::socket& socket, io_service& ioservice) {
 
 //verify if it is a message
 void send_message(ip::tcp::socket& socket, std::string message, io_service& ioservice) {
-        messages.push_back(message);
-        if (!message.empty()) {
-            write_data(socket, ioservice);
-            
-        }
+    messages.push_back(message);
+    if (!message.empty()) {
+        write_data(socket, ioservice);
+
+    }
 
 
 
@@ -114,8 +95,9 @@ int main() {
         while (std::cin.getline(line, MAX_TEXT_LENGTH + 1)) {
             std::string message(line);
             send_message(socket, message, ioservice);
+
         }
-        
+
         //std::cout << "IN 12" << std::endl;
         t.join(); // Wait for the thread to finish
         //std::cout << "IN 13" << std::endl;
@@ -126,4 +108,3 @@ int main() {
 
     return 0;
 }
-
