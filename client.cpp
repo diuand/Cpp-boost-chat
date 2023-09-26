@@ -14,16 +14,17 @@ void read_data(ip::tcp::socket& socket)
     // Create a buffer
     std::array<char, MAX_TEXT_LENGTH> read_msg;
 
-    // Async read
+    // read from server
     socket.async_read_some(boost::asio::buffer(read_msg),
         [&](boost::system::error_code ec, std::size_t bytes_transferred) {
             if (!ec) {
                 // Display the received message
                 std::cout.write(read_msg.data(), bytes_transferred);
                 std::cout << "\n";
-                read_data(socket); // Continue reading
+                // Continue reading
+                read_data(socket); 
             }
-            else {
+            else { // handle errors
                 std::cerr << "Read error: " << ec.message() << "\n";
             }
         });
@@ -34,13 +35,13 @@ void read_data(ip::tcp::socket& socket)
 std::deque<std::string> messages;
 
 
-// the actual sending funcion to the server
+// sending messages to the server
 void write_data(ip::tcp::socket& socket, io_service& ioservice) {
     if (!messages.empty()) {
-        //send data async
+        //send data to the server
         async_write(socket, buffer(messages.front().data(), messages.front().length()), [&](boost::system::error_code ec, std::size_t) {
             if (!ec) {
-                //clean after sening
+                //remove message after sending it
                 messages.pop_front();
                 //repeat for more messages
                 if (!messages.empty()) {
@@ -52,18 +53,13 @@ void write_data(ip::tcp::socket& socket, io_service& ioservice) {
 }
 
 
-//verify if it is a message
+//message verification function
 void send_message(ip::tcp::socket& socket, std::string message, io_service& ioservice) {
     messages.push_back(message);
     if (!message.empty()) {
-        write_data(socket, ioservice);
+        write_data(socket, ioservice);//send to the server
 
     }
-
-
-
-
-
 }
 
 
@@ -78,7 +74,6 @@ int main() {
         // read data after connecting
         async_connect(socket, resolver.resolve({ "127.0.0.1", "55004" }), [&](boost::system::error_code ec, ip::tcp::endpoint) {
             if (!ec) {
-                std::cout << "IN 0" << std::endl;
                 read_data(socket);
             }
             else {
@@ -87,7 +82,6 @@ int main() {
             });
 
         //ioservice thread
-        std::cout << "IN 10" << std::endl;
         std::thread t([&ioservice]() { ioservice.run(); }); // the thread is runnging just on the t.join
 
         //writing loop
@@ -98,9 +92,7 @@ int main() {
 
         }
 
-        //std::cout << "IN 12" << std::endl;
         t.join(); // Wait for the thread to finish
-        //std::cout << "IN 13" << std::endl;
     }
     catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
